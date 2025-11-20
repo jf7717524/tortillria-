@@ -1,0 +1,68 @@
+// Prototipo simple de app web (HTML + JS) para registrar ventas diarias y generar reporte semanal PDF
+// NOTA: Para generar PDF se usa jsPDF (deberás incluir la librería en tu proyecto)
+
+// Estructura básica para manejar datos
+let ventasDiarias = []; // { fecha, productos: { publico, tienda, comal, totopos, taco }, sobrante: {...} }
+let gastosSemanales = []; // { fecha, concepto, monto }
+
+function registrarVenta(fecha, productos, sobrante) {
+  ventasDiarias.push({ fecha, productos, sobrante });
+  guardarLocal();
+}
+
+function registrarGasto(fecha, concepto, monto) {
+  gastosSemanales.push({ fecha, concepto, monto });
+  guardarLocal();
+}
+
+function guardarLocal() {
+  localStorage.setItem('ventasDiarias', JSON.stringify(ventasDiarias));
+  localStorage.setItem('gastosSemanales', JSON.stringify(gastosSemanales));
+}
+
+function cargarLocal() {
+  ventasDiarias = JSON.parse(localStorage.getItem('ventasDiarias')) || [];
+  gastosSemanales = JSON.parse(localStorage.getItem('gastosSemanales')) || [];
+}
+
+function calcularReporteSemanal() {
+  let totalProductos = {
+    publico: 0,
+    tienda: 0,
+    comal: 0,
+    totopos: 0,
+    taco: 0
+  };
+
+  ventasDiarias.forEach((v) => {
+    Object.keys(totalProductos).forEach((prod) => {
+      totalProductos[prod] += Number(v.productos[prod] || 0);
+    });
+  });
+
+  let totalGastos = gastosSemanales.reduce((suma, g) => suma + Number(g.monto), 0);
+
+  return { totalProductos, totalGastos };
+}
+
+// Generar PDF
+function generarPDF() {
+  const reporte = calcularReporteSemanal();
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.text('Reporte Semanal - Tortillería', 10, 10);
+
+  doc.setFontSize(12);
+  doc.text('Productos Vendidos:', 10, 20);
+
+  let y = 30;
+  for (let [producto, cantidad] of Object.entries(reporte.totalProductos)) {
+    doc.text(`${producto}: ${cantidad} kg`, 10, y);
+    y += 10;
+  }
+
+  doc.text(`Gastos Totales: $${reporte.totalGastos}`, 10, y + 10);
+
+  doc.save('reporte_semanal.pdf');
+}
